@@ -13,8 +13,8 @@ The EDC System provides a premium user experience where a 3D avatar interacts wi
 
 ### Key Features
 
-- **👤 3D Avatar**: Realistic 3D model with "ARKit" facial blendshapes.
-- **👄 Automated Lip-Sync**: Real-time mouth movements synchronized with voice output.
+- **👤 3D Avatar**: Realistic 3D model with "ARKit".
+- **👄 Automated Lip-Sync**: Real-time movements synchronized with voice output.
 - **⚡ Zero-Delay Voice**: Streaming TTS (Text-to-Speech) that starts speaking before the AI finishes thinking.
 - **🤖 Local AI (Ollama)**: Highly secure and private conversational AI using the Gemma/Llama models.
 - **✨ Glassmorphic UI**: High-end modern design using Tailwind CSS.
