@@ -1,6 +1,6 @@
 # Enterprise Digital Concierge (EDC) System
 
-An enterprise-grade, real-time interactive 3D humanoid assistant powered by local AI and WebSockets.
+An enterprise-grade, real-time interactive 3D assistant powered by local AI and WebSockets.
 
 ![EDC Demo](https://img.shields.io/badge/Status-Complete-success)
 ![React](https://img.shields.io/badge/Frontend-React-61DAFB?logo=react)
