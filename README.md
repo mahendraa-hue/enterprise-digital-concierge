@@ -9,11 +9,11 @@ An enterprise-grade, real-time interactive 3D humanoid assistant powered by loca
 
 ## 🎥 Overview
 
-The EDC System provides a premium user experience where a 3D humanoid avatar interacts with users in real-time. It features low-latency AI responses, automated lip-syncing, and voice synthesis, all running in a containerized environment.
+The EDC System provides a premium user experience where a 3D avatar interacts with users in real-time. It features low-latency AI responses, automated lip-syncing, and voice synthesis, all running in a containerized environment.
 
 ### Key Features
 
-- **👤 Humanoid Avatar**: Realistic 3D model with "ARKit" facial blendshapes.
+- **👤 3D Avatar**: Realistic 3D model with "ARKit" facial blendshapes.
 - **👄 Automated Lip-Sync**: Real-time mouth movements synchronized with voice output.
 - **⚡ Zero-Delay Voice**: Streaming TTS (Text-to-Speech) that starts speaking before the AI finishes thinking.
 - **🤖 Local AI (Ollama)**: Highly secure and private conversational AI using the Gemma/Llama models.
