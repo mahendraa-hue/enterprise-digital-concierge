@@ -1,0 +1,233 @@
+version: '3.9'
+
+services:
+  # PostgreSQL Database
+  postgres:
+    image: postgres:15-alpine
+    container_name: edc-postgres
+    environment:
+      POSTGRES_DB: edc_dev
+      POSTGRES_USER: edc_user
+      POSTGRES_PASSWORD: edc_dev_password
+      POSTGRES_INITDB_ARGS: "-c max_connections=200"
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./database/init.sql:/docker-entrypoint-initdb.d/init.sql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U edc_user -d edc_dev"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - edc-network
+
+  # Redis Cache & Session Store
+  redis:
+    image: redis:7-alpine
+    container_name: edc-redis
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - edc-network
+
+  # Ollama (Local LLM Inference)
+  ollama:
+    image: ollama/ollama:latest
+    container_name: edc-ollama
+    ports:
+      - "11434:11434"
+    volumes:
+      - ollama_data:/root/.ollama
+    environment:
+      OLLAMA_NUM_PARALLEL: "4"
+      OLLAMA_MAX_LOADED_MODELS: "1"
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:11434/api/tags"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    networks:
+      - edc-network
+    # Note: Run `ollama pull gemma:7b-instruct` after container starts
+
+  # Backend API Server
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: edc-backend
+    ports:
+      - "8000:8000"
+    environment:
+      # Database
+      DATABASE_URL: postgresql://edc_user:edc_dev_password@postgres:5432/edc_dev
+      
+      # Redis
+      REDIS_URL: redis://redis:6379
+      
+      # Ollama
+      OLLAMA_URL: http://ollama:11434
+      
+      # JWT & Security
+      SECRET_KEY: dev-secret-key-change-in-production
+      ALGORITHM: HS256
+      ACCESS_TOKEN_EXPIRE_MINUTES: 15
+      
+      # APIs (optional)
+      OPENAI_API_KEY: ${OPENAI_API_KEY}
+      
+      # Logging
+      LOG_LEVEL: DEBUG
+      
+      # Environment
+      ENVIRONMENT: development
+      CORS_ORIGINS: "http://localhost:3000,http://localhost:3001"
+    
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      ollama:
+        condition: service_healthy
+    
+    volumes:
+      - ./backend:/app
+      - /app/__pycache__
+    
+    command: >
+      sh -c "
+        alembic upgrade head &&
+        uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
+      "
+    
+    networks:
+      - edc-network
+    
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # Frontend Development Server
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile.dev
+    container_name: edc-frontend
+    ports:
+      - "3000:3000"
+    environment:
+      VITE_API_URL: http://localhost:8000
+      VITE_WS_URL: ws://localhost:8000
+      NODE_ENV: development
+    
+    volumes:
+      - ./frontend/src:/app/src
+      - ./frontend/public:/app/public
+      - /app/node_modules
+    
+    command: npm run dev -- --host 0.0.0.0
+    
+    networks:
+      - edc-network
+    
+    stdin_open: true
+    tty: true
+
+  # Nginx Reverse Proxy (Optional)
+  nginx:
+    image: nginx:alpine
+    container_name: edc-nginx
+    ports:
+      - "80:80"
+    volumes:
+      - ./nginx.conf:/etc/nginx/nginx.conf:ro
+    depends_on:
+      - frontend
+      - backend
+    networks:
+      - edc-network
+
+  # Adminer (Database Management UI - Optional)
+  adminer:
+    image: adminer:latest
+    container_name: edc-adminer
+    ports:
+      - "8080:8080"
+    depends_on:
+      - postgres
+    networks:
+      - edc-network
+    environment:
+      ADMINER_DEFAULT_SERVER: postgres
+
+  # Redis Commander (Redis Management UI - Optional)
+  redis-commander:
+    image: rediscommander/redis-commander:latest
+    container_name: edc-redis-commander
+    ports:
+      - "8081:8081"
+    environment:
+      REDIS_HOSTS: local:redis:6379
+    depends_on:
+      - redis
+    networks:
+      - edc-network
+
+# Volumes
+volumes:
+  postgres_data:
+    driver: local
+  redis_data:
+    driver: local
+  ollama_data:
+    driver: local
+
+# Networks
+networks:
+  edc-network:
+    driver: bridge
+
+# ============================================================================
+# USAGE INSTRUCTIONS
+# ============================================================================
+# 
+# 1. Start the entire stack:
+#    docker-compose up -d
+#
+# 2. View logs:
+#    docker-compose logs -f backend
+#    docker-compose logs -f frontend
+#
+# 3. Download Ollama model:
+#    docker exec edc-ollama ollama pull gemma:7b-instruct
+#
+# 4. Initialize database (if needed):
+#    docker exec edc-backend alembic upgrade head
+#
+# 5. Access services:
+#    Frontend: http://localhost:3000
+#    Backend API: http://localhost:8000
+#    API Docs: http://localhost:8000/docs
+#    Database (Adminer): http://localhost:8080
+#    Redis (Commander): http://localhost:8081
+#    Ollama: http://localhost:11434
+#
+# 6. Stop the stack:
+#    docker-compose down
+#
+# 7. Remove volumes (clean slate):
+#    docker-compose down -v
+#
+# ============================================================================
